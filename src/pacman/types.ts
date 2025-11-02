@@ -1,3 +1,11 @@
+export type GameMode =
+  | "INIT"
+  | "PLAYING"
+  | "PAUSED"
+  | "PACMAN_DEAD"
+  | "LEVEL_TRANSITION"
+  | "GAME_OVER";
+
 export type TileType =
   | "WH" // Wall Horizontal
   | "WV" // Wall Vertical

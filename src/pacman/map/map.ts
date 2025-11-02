@@ -15,7 +15,15 @@ class Map extends Entity {
     this.lineColor = this.gameState.levelData.mapColor;
   }
 
-  update() {
+  public update() {
+
+  }
+
+  public override init() {
+    this.needsRedraw = true;
+  }
+
+  public draw(animate: boolean) {
     const map = this.gameState.levelData.map;
 
     this.ctx.strokeStyle = this.lineColor;

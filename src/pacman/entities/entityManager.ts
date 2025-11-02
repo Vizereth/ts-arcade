@@ -56,6 +56,10 @@ class EntityManager {
     return this.dynamicEntities.pill[0] as Pill;
   }
 
+  public getUI(): UI {
+    return this.staticEntities.ui[0] as UI;
+  }
+
   public getPacman(): Pacman {
     return this.dynamicEntities.pacman[0] as Pacman;
   }
@@ -70,6 +74,14 @@ class EntityManager {
 
   public resetAll(): void {
     [...this.getAllStatic(), ...this.getAllDynamic()].forEach((e) => e.reset());
+  }
+
+  public resetAllForLevel(): void {
+    [...this.getAllStatic(), ...this.getAllDynamic()].forEach((e) => e.resetForLevel());
+  }
+
+  public spawnPacman(): void {
+    this.getPacman().spawn();
   }
 
   public spawnAll(): void {

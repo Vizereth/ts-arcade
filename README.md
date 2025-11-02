@@ -4,6 +4,8 @@
 - Better spawn method
 - Smoother pacman turning
 - Speed independend of framerate
+- AnimationFrameHelper for any 60FPS loop
+- Better pacman's death animation
 
 
 # create-svelte

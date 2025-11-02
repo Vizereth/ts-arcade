@@ -9,21 +9,28 @@ class UI extends Entity {
   private color: string;
 
   constructor() {
-    super(CANVAS_CONFIG.canvasIds.ui, true);
+    super(CANVAS_CONFIG.canvasIds.ui, false);
 
     this.gameState = GameState.getInstance();
-    this.fontSize = this.tileSize - this.tileSize / 10 + "px";
-    this.fontStyle = "Audiowide";
-    this.color = "rgb(250, 240, 98)";
+    this.fontSize = 30 + "px";
+    this.fontStyle = "Jersey-Regular";
+    this.color = "rgba(250, 240, 98, 0.85)";
   }
 
-  update() {
-    this.draw();
-    this.drawScore();
-    this.drawLives();
+  public update() {}
+
+  public resetForLevel() {
+    this.clearCanvas();
+    this.update();
   }
 
-  private draw() {
+  public draw(animate: boolean) {
+    this.drawWords();
+    this.drawScoreCount();
+    this.drawLivesCount();
+  }
+
+  private drawWords() {
     const scoreCoords = { x: this.tileSize / 2, y: this.tileSize * 32 };
     const livesCoords = { x: this.tileSize * 20, y: this.tileSize * 32 };
 
@@ -36,7 +43,7 @@ class UI extends Entity {
     this.ctx.fillText("LIVES: ", livesCoords.x, livesCoords.y);
   }
 
-  private drawScore() {
+  private drawScoreCount() {
     const coords = {
       x: this.tileSize / 2 + this.tileSize * 4,
       y: this.tileSize * 32,
@@ -47,11 +54,11 @@ class UI extends Entity {
     this.ctx.fillText(this.gameState.score.toString(), coords.x, coords.y);
   }
 
-  private drawLives() {
+  private drawLivesCount() {
     const coords = {
-      cx: this.tileSize * 24.5,
+      cx: this.tileSize * 24,
       cy: this.tileSize * 32 - this.tileSize / 2.5,
-      r: this.tileSize / 2,
+      r: this.tileSize / 2.5,
       a1: 0.2 * Math.PI,
       a2: 1.8 * Math.PI,
     };
@@ -72,29 +79,16 @@ class UI extends Entity {
     }
   }
 
-  // drawDefaultScore() {
-  //   canvasCleaner("score");
+  public drawCounter(n: number): void {
+    this.clearCanvas();
+    this.ctx.fillStyle = this.color;
+    this.ctx.beginPath();
+    this.ctx.font = this.tileSize * 3 + "px" + " " + this.fontStyle;
+    this.ctx.fillText(n.toString(), this.tileSize * 13.5, this.tileSize * 15);
+    this.ctx.closePath();
+  }
 
-  //   const coords = {
-  //     FSx: blockWidth / 2,
-  //     FSy: tileSize * 31,
-  //     BSx: blockWidth * 17,
-  //     BSy: tileSize * 31,
-  //   };
-
-  //   const colorFS = "rgb(101, 255, 101)";
-  //   const colorBS = "rgb(77, 226, 252)";
-  //   const fontSize = blockWidth - blockWidth / 12 + "px";
-  //   const fontStyle = "Audiowide";
-
-  //   ctx_score.fillStyle = colorFS;
-  //   ctx_score.font = fontSize + " " + fontStyle;
-  //   ctx_score.fillText("FINAL SCORE: " + game.score, coords.FSx, coords.FSy);
-
-  //   ctx_score.fillStyle = colorBS;
-  //   ctx_score.font = fontSize + " " + fontStyle;
-  //   ctx_score.fillText("BEST SCORE: 0", coords.BSx, coords.BSy);
-  // }
+  public drawDialog(text: string): void {}
 }
 
 export { UI };

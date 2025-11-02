@@ -53,6 +53,10 @@ abstract class Entity {
 
   reset(): void {}
 
+  resetForLevel(): void {}
+
+  abstract draw(animate: boolean, dt?: number): void;
+
   abstract update(dt?: number): void;
 }
 

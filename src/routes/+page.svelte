@@ -1,5 +1,4 @@
 <script lang="ts">
-  // List of routes with labels
   const routes = [{ path: "/pacman", name: "Pac-Man" }];
 </script>
 

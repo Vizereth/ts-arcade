@@ -1,9 +1,9 @@
 import { CANVAS_CONFIG } from "../config/canvas.js";
 import { Collision } from "../game/collision.js";
 import { GameState } from "../game/state.js";
+import { easeInOutCubic } from "../utils.js";
 import { Entity } from "./entity.js";
 import { EntityManager } from "./entityManager.js";
-import { Ghost } from "./ghost.js";
 
 class Pacman extends Entity {
   private gameState: GameState;
@@ -22,10 +22,14 @@ class Pacman extends Entity {
   private buffDuration: number;
   private buffRemaining: number;
 
-  private mouthOpen: boolean = false;
+  private mouthOpen: boolean = true;
   private mouthFrameCounter: number = 0;
   private mouthFrameSkip: number = 9; // 1/6 frame rate
   private mouthAngle: number = Math.PI / 4; // 45 degrees for classic wedge
+
+  private isDying: boolean = false;
+  private deathTimer: number = 0; // 0 to 1
+  private deathDuration: number = 1000; // 1 second death animation
 
   private r: number;
   private color: string;
@@ -60,20 +64,23 @@ class Pacman extends Entity {
   public override reset() {
     this.x = 0;
     this.y = 0;
-    this.mouthOpen = false;
+    this.isBuffed = false;
+    this.buffRemaining = 0;
+    this.mouthOpen = true;
     this.direction = { dx: 0, dy: 0 };
     this.nextDirection = null;
   }
 
-  public update(dt: number) {
-    if (!this.gameState.isRunning) return;
+  public override resetForLevel() {
+    this.reset();
+  }
 
-    this.draw();
+  public update(dt: number) {
     this.updateMovement(dt);
 
-    if (this.hasCollidedWithGhost()) {
-      // this.isBuffed ? this.eatGhost() : this.loseLife();
-      this.gameState.loseLife();
+    if (this.hasCollidedWithGhost() && !this.isBuffed) {
+      this.triggerDeath();
+      this.gameState.triggerDeathSequence();
     }
 
     if (this.isBuffed) this.updateBuff(dt);
@@ -90,6 +97,11 @@ class Pacman extends Entity {
         return;
       }
     }
+  }
+
+  public triggerDeath(): void {
+    this.isDying = true;
+    this.deathTimer = 0;
   }
 
   private updateMovement(dt: number) {
@@ -230,11 +242,9 @@ class Pacman extends Entity {
     const ghosts = this.entityManager.getGhosts();
 
     for (const g of ghosts) {
-      const distance = Math.sqrt(
-        (this.x - g.x) ** 2 + (this.y - g.y) ** 2
-      );
+      const distance = Math.sqrt((this.x - g.x) ** 2 + (this.y - g.y) ** 2);
       const collisionDistance = this.r + g.r;
-      
+
       if (distance < collisionDistance) {
         return true;
       }
@@ -274,7 +284,15 @@ class Pacman extends Entity {
     }
   }
 
-  private draw(): void {
+  public draw(animate: boolean, dt: number): void {
+    if (this.isDying) {
+      this.drawDead(dt);
+    } else {
+      this.drawNormal(animate);
+    }
+  }
+
+  private drawNormal(animate: boolean): void {
     const cx = this.x;
     const cy = this.y;
     const r = this.r;
@@ -299,15 +317,50 @@ class Pacman extends Entity {
 
     this.ctx.restore();
 
-    this.animateMouth();
+    if (animate) {
+      this.mouthFrameCounter++;
+      if (this.mouthFrameCounter < this.mouthFrameSkip) return;
+
+      this.mouthFrameCounter = 0;
+      this.mouthOpen = !this.mouthOpen;
+    }
   }
 
-  private animateMouth(): void {
-    this.mouthFrameCounter++;
-    if (this.mouthFrameCounter < this.mouthFrameSkip) return;
+  private drawDead(dt: number): void {
+    this.deathTimer += dt;
 
-    this.mouthFrameCounter = 0;
-    this.mouthOpen = !this.mouthOpen;
+    if (this.deathTimer >= this.deathDuration) {
+      this.isDying = false;
+      this.deathTimer = 0;
+      this.gameState.completeDeathSequence();
+      return;
+    }
+
+    const cx = this.x;
+    const cy = this.y;
+    const r = this.r;
+    const p = Math.min(1, this.deathTimer / this.deathDuration);
+    const easedP = easeInOutCubic(p);
+
+    this.ctx.save();
+    this.ctx.translate(cx, cy);
+    this.ctx.rotate(this.getRotation() + easedP * 10); // spin faster as he dies
+
+    const scale = 1 - easedP; // shrink down
+    this.ctx.scale(scale, scale);
+
+    const mouthAngle = Math.max(0, Math.PI * (1 - easedP * 2)); // mouth closing
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, 0);
+    this.ctx.arc(0, 0, r, mouthAngle, 2 * Math.PI - mouthAngle);
+    this.ctx.closePath();
+
+    this.ctx.fillStyle = this.color;
+    this.ctx.globalAlpha = Math.max(0, 1 - easedP * 1.2);
+    this.ctx.fill();
+
+    this.ctx.restore();
   }
 
   private getRotation(): number {

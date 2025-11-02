@@ -50,21 +50,6 @@ class Collision {
 
     return false;
   }
-
-  public hasCollidedWithEatable(x: number, y: number) {
-    const { tileX, tileY } = this.getTile(x, y);
-
-    const food = this.entityManager.getFood();
-    const pill = this.entityManager.getPill();
-
-    if (food.positions.has(`${tileY},${tileX}`)) {
-      food.eat(tileY, tileX);
-    }
-
-    if (pill.positions.some((pos) => pos.i === tileY && pos.j === tileX)) {
-      pill.eat(tileY, tileX);
-    }
-  }
 }
 
 export { Collision };

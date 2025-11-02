@@ -25,27 +25,37 @@ class Food extends Entity {
         }
       }
     }
+    this.needsRedraw = true;
   }
 
   public override reset() {
     this.positions = new Set();
   }
 
+  public eat(i: number, j: number) {
+    this.positions.delete(`${i},${j}`);
+    this.clearCanvas(
+      j * this.tileSize,
+      i * this.tileSize,
+      this.tileSize,
+      this.tileSize
+    );
+  }
+
   public update() {
+    
+  }
+
+  public draw(animate: boolean) {
     this.positions.forEach((pos) => {
       const [i, j] = pos.split(",").map(Number);
-      this.draw(i, j);
+      this.drawDot(i, j);
     });
   }
 
-  public eat(i: number, j: number) {
-    this.positions.delete(`${i},${j}`);
-    this.clearCanvas(j * this.tileSize, i * this.tileSize, this.tileSize, this.tileSize);
-  }
-
-  private draw(i: number, j: number) {
+  private drawDot(i: number, j: number) {
     const tileSize = CANVAS_CONFIG.tile.size;
-    
+
     this.ctx.fillStyle = this.color;
     this.ctx.beginPath();
     this.ctx.arc(

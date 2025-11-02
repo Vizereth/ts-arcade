@@ -52,10 +52,11 @@ class Controller {
     const pacman = this.getPacman();
     if (!pacman) return;
 
+    // Use changeDirection for consistency
     if (dx > dy) {
-      pacman.direction = x2 > this.x1 ? { dx: 1, dy: 0 } : { dx: -1, dy: 0 };
+      pacman.changeDirection({ dx: x2 > this.x1 ? 1 : -1, dy: 0 });
     } else {
-      pacman.direction = y2 > this.y1 ? { dx: 0, dy: 1 } : { dx: 0, dy: -1 };
+      pacman.changeDirection({ dx: 0, dy: y2 > this.y1 ? 1 : -1 });
     }
 
     this.x1 = this.y1 = null;
@@ -64,12 +65,12 @@ class Controller {
   keyDown(event: KeyboardEvent) {
     event.preventDefault();
 
-    if (event.key === "Enter" && !this.gameState.isRunning) {
+    if (event.key === "Enter" && this.gameState.mode === "INIT") {
       this.gameState.startGame();
       return;
     }
 
-    if (!this.gameState.isRunning) return;
+    if (this.gameState.mode !== "PLAYING") return;
 
     const pacman = this.getPacman();
     if (!pacman) return;

@@ -58,12 +58,15 @@ class Ghost extends Entity {
     this.isFleeing = false;
   }
 
+  public override resetForLevel() {
+    this.reset();
+    this.getRandomDirection();
+  }
+
   // -------------------------
   // 4. Update loop
   // -------------------------
   public update() {
-    if (!this.gameState.isRunning) return;
-
     if (this.isAtTileCenter() && this.willHitWall()) {
       this.snapToCenter();
       this.getRandomDirection();
@@ -77,8 +80,6 @@ class Ghost extends Entity {
       this.x = newX;
       this.y = newY;
     }
-
-    this.draw();
   }
 
   private isAtTileCenter(): boolean {
@@ -123,15 +124,12 @@ class Ghost extends Entity {
       { dx: 0, dy: -1 },
     ];
 
-    // Separate directions by axis
     const horizontalDirs = directions.filter((dir) => dir.dy === 0);
     const verticalDirs = directions.filter((dir) => dir.dx === 0);
 
-    // Get current axis
     const isCurrentlyHorizontal = this.direction.dy === 0;
     const isCurrentlyVertical = this.direction.dx === 0;
 
-    // Prefer perpendicular directions (70% chance)
     let preferredDirs;
     if (Math.random() < 0.7) {
       preferredDirs = isCurrentlyHorizontal ? verticalDirs : horizontalDirs;
@@ -139,7 +137,6 @@ class Ghost extends Entity {
       preferredDirs = isCurrentlyHorizontal ? horizontalDirs : verticalDirs;
     }
 
-    // Shuffle preferred directions
     for (let i = preferredDirs.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [preferredDirs[i], preferredDirs[j]] = [
@@ -148,7 +145,6 @@ class Ghost extends Entity {
       ];
     }
 
-    // Try preferred directions first
     for (const dir of preferredDirs) {
       const tileX = Math.floor(
         (this.x + dir.dx * (this.tileSize / 2 + this.speed)) / this.tileSize
@@ -162,7 +158,6 @@ class Ghost extends Entity {
       }
     }
 
-    // If no preferred direction works, try all directions
     for (const dir of directions) {
       const tileX = Math.floor(
         (this.x + dir.dx * (this.tileSize / 2 + this.speed)) / this.tileSize
@@ -206,7 +201,7 @@ class Ghost extends Entity {
     return "RIGHT";
   }
 
-  private draw(): void {
+  public draw(animate: boolean): void {
     const ctx = this.ctx;
     const s = this.tileSize;
     const left = this.x - s / 2;
@@ -214,39 +209,94 @@ class Ghost extends Entity {
 
     const dir = this.getDirectionLabel();
 
-    // Self-contained animation timing
-    const now = Date.now();
-    const animationPhase = ((now % 1000) / 1000) * Math.PI * 2; // Slightly faster (800ms cycle)
-    const waveAmplitude = 2.5; // Even more pronounced - 6px amplitude!
-
     ctx.fillStyle = this.color;
     ctx.beginPath();
 
-    // Main ghost body - rounded top (semi-circle)
-    const centerX = left + s / 2;
-    const centerY = top + s / 2;
+    // Draw base ghost shape
+    this.drawBaseShape(left, top, s);
 
-    ctx.arc(centerX, centerY, s / 2, Math.PI, 0, false);
-
-    // Very pronounced sine wave bottom
-    const bottomBaseY = top + s;
-    const waveCount = 6; // More segments for smoother wave
-    const segmentWidth = s / waveCount;
-
-    // Start from right side
-    ctx.lineTo(left + s, bottomBaseY);
-
-    // Create smooth sine wave across bottom
-    for (let i = waveCount; i >= 0; i--) {
-      const x = left + i * segmentWidth;
-      // Continuous sine wave with high amplitude
-      const phase = (i / waveCount) * Math.PI * 4 + animationPhase * 4; // Double frequency
-      const wave = Math.sin(phase) * waveAmplitude;
-      ctx.lineTo(x, bottomBaseY + wave);
+    // Draw wavy bottom - animated or static
+    if (animate) {
+      this.animateWavyBottom(left, top, s);
+    } else {
+      this.drawStaticBottom(left, top, s);
     }
 
     ctx.closePath();
     ctx.fill();
+
+    // Draw eyes and pupils
+    this.drawEyes(left, top, s, dir);
+  }
+
+  private drawBaseShape(left: number, top: number, s: number): void {
+    const centerX = left + s / 2;
+    const centerY = top + s / 2;
+
+    // Main ghost body - rounded top (semi-circle)
+    this.ctx.arc(centerX, centerY, s / 2, Math.PI, 0, false);
+  }
+
+  private drawStaticBottom(left: number, top: number, s: number): void {
+    const bottomBaseY = top + s;
+
+    // Simple straight bottom for static version
+    this.ctx.lineTo(left + s, bottomBaseY);
+    this.ctx.lineTo(left, bottomBaseY);
+  }
+
+  private animateWavyBottom(left: number, top: number, s: number): void {
+    const ctx = this.ctx;
+    const bottomBaseY = top + s;
+    const waveCount = 6;
+    const segmentWidth = s / waveCount;
+    const waveAmplitude = 2.5;
+
+    // Self-contained animation timing
+    const now = Date.now();
+    const animationPhase = ((now % 1000) / 1000) * Math.PI * 2;
+
+    // Start from right side
+    let currentX = left + s;
+    let currentY = bottomBaseY + Math.sin(animationPhase * 4) * waveAmplitude;
+
+    ctx.lineTo(currentX, currentY);
+
+    // Create ultra-smooth waves using cubic bezier curves
+    for (let i = waveCount - 1; i >= 0; i--) {
+      const segmentStartX = left + (i + 1) * segmentWidth;
+      const segmentEndX = left + i * segmentWidth;
+      const segmentThirdX = segmentStartX - segmentWidth / 3;
+      const segmentTwoThirdsX = segmentStartX - (2 * segmentWidth) / 3;
+
+      // Calculate wave heights
+      const startPhase =
+        ((i + 1) / waveCount) * Math.PI * 4 + animationPhase * 4;
+      const thirdPhase =
+        ((i + 2 / 3) / waveCount) * Math.PI * 4 + animationPhase * 4;
+      const twoThirdsPhase =
+        ((i + 1 / 3) / waveCount) * Math.PI * 4 + animationPhase * 4;
+      const endPhase = (i / waveCount) * Math.PI * 4 + animationPhase * 4;
+
+      const startY = bottomBaseY + Math.sin(startPhase) * waveAmplitude;
+      const thirdY = bottomBaseY + Math.sin(thirdPhase) * waveAmplitude;
+      const twoThirdsY = bottomBaseY + Math.sin(twoThirdsPhase) * waveAmplitude;
+      const endY = bottomBaseY + Math.sin(endPhase) * waveAmplitude;
+
+      // Cubic bezier for ultra-smooth curves
+      ctx.bezierCurveTo(
+        segmentThirdX,
+        thirdY, // First control point
+        segmentTwoThirdsX,
+        twoThirdsY, // Second control point
+        segmentEndX,
+        endY // End point
+      );
+    }
+  }
+
+  private drawEyes(left: number, top: number, s: number, dir: string): void {
+    const ctx = this.ctx;
 
     // Eyes with good spacing (20% from edges, 20% gap in middle)
     ctx.fillStyle = "#FFFFFF";
@@ -259,7 +309,7 @@ class Ghost extends Entity {
 
     ctx.fill();
 
-    // Pupils - directional (same logic as before)
+    // Pupils - directional
     ctx.fillStyle = "#0000AA";
     ctx.beginPath();
 

@@ -4,20 +4,17 @@ class GameLoop {
   renderer: Renderer;
   private static instance: GameLoop;
   private fps: number;
-  private now: number | null;
+  private now: number | null = null;
   private then: number;
   private interval: number;
-  private delta: number | null;
-  private timer: number | null;
+  private delta: number | null = null;
+  private timer: number | null = null;
 
   constructor(fps: number = 60) {
     this.renderer = Renderer.getInstance();
     this.fps = fps;
-    this.now = null;
     this.then = Date.now();
     this.interval = 1000 / this.fps;
-    this.delta = null;
-    this.timer = null;
   }
 
   static getInstance(): GameLoop {
