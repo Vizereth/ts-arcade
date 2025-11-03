@@ -24,10 +24,11 @@ export type TileType =
   | "IY" // Inky (Cyan Ghost)
   | "CE"; // Clyde (Orange Ghost)
 
-type LevelConfigType = {
+export type LevelConfigType = {
   map: TileType[][];
   mapColor: string;
   buffDuration: number;
 };
 
-export type { LevelConfigType };
+export type EventHandler = (payload?: any) => void;
+

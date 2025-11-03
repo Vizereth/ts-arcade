@@ -255,6 +255,7 @@ class Pacman extends Entity {
     // Normal teleport check
     if (this.collision.isTeleport(tileX, tileY)) {
       const exit = this.collision.getTeleportExit(tileX, tileY);
+      
       if (exit) {
         this.x = exit.x * this.tileSize + this.tileSize / 2;
         this.y = exit.y * this.tileSize + this.tileSize / 2;
