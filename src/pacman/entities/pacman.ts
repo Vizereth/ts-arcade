@@ -1,15 +1,18 @@
 import { CANVAS_CONFIG } from "../config/canvas.js";
 import { Collision } from "../game/collision.js";
+import { eventBus } from "../game/eventBus.js";
 import { GameState } from "../game/state.js";
 import { easeInOutCubic } from "../utils.js";
 import { Entity } from "./entity.js";
 import { EntityManager } from "./entityManager.js";
+import type { Ghost } from "./ghost.js";
 
 class Pacman extends Entity {
   private gameState: GameState;
   private entityManager: EntityManager;
   private collision: Collision;
 
+  public state: "ALIVE" | "EATEN" | "DYING" = "ALIVE";
   public x: number;
   public y: number;
   public direction: { dx: number; dy: number };
@@ -20,15 +23,12 @@ class Pacman extends Entity {
   private lastTeleportExit: { x: number; y: number } | null = null;
 
   private isBuffed: boolean;
-  private buffDuration: number;
-  private buffRemaining: number;
 
   private mouthOpen: boolean = true;
   private mouthFrameCounter: number = 0;
   private mouthFrameSkip: number = 9; // 1/6 frame rate
   private mouthAngle: number = Math.PI / 4; // 45 degrees for classic wedge
 
-  private isDying: boolean = false;
   private deathTimer: number = 0; // 0 to 1
   private deathDuration: number = 3000; // 1 second death animation
 
@@ -49,24 +49,30 @@ class Pacman extends Entity {
     this.needsAligning = false;
     this.isTurning = false;
     this.speed = Math.round((this.tileSize / 8) * 10) / 10;
-
     this.isBuffed = false;
-    this.buffDuration = this.gameState.levelData.buffDuration;
-    this.buffRemaining = 0;
-
     this.r = this.tileSize * 0.45;
     this.color = "rgb(255, 255, 0)";
   }
 
   public override init() {
     this.spawn();
+    this.initEventListeners();
+  }
+
+  private initEventListeners() {
+    eventBus.on("POWER_PILL_EATEN", () => {
+      this.isBuffed = true;
+    });
+
+    eventBus.on("POWER_PILL_EXPIRED", () => {
+      this.isBuffed = false;
+    });
   }
 
   public override reset() {
     this.x = 0;
     this.y = 0;
     this.isBuffed = false;
-    this.buffRemaining = 0;
     this.mouthOpen = true;
     this.direction = { dx: 0, dy: 0 };
     this.nextDirection = null;
@@ -77,14 +83,24 @@ class Pacman extends Entity {
   }
 
   public update(dt: number) {
+    if (this.state === "DYING" || this.gameState.mode !== "PLAYING") return;
+
     this.updateMovement(dt);
 
-    if (this.hasCollidedWithGhost() && !this.isBuffed) {
-      this.triggerDeath();
-      this.gameState.triggerDeathSequence();
-    }
+    const collidedGhost = this.getCollidedGhost();
 
-    if (this.isBuffed) this.updateBuff(dt);
+    if (collidedGhost) {
+      if (this.isBuffed && collidedGhost.state === "FRIGHTENED") {
+        // 1. Tell the system a ghost was eaten (for scoring)
+        this.gameState.updateScore("GHOST");
+        // 2. Tell the specific ghost it was eaten (to change its state/return home)
+        collidedGhost.state = "EATEN";
+      } else if (collidedGhost.state !== "EATEN") {
+        // Only die if the ghost isn't already "eyes" returning to base
+        this.triggerDeath();
+        this.gameState.triggerDeathSequence();
+      }
+    }
   }
 
   public spawn() {
@@ -101,7 +117,7 @@ class Pacman extends Entity {
   }
 
   public triggerDeath(): void {
-    this.isDying = true;
+    this.state = "DYING";
     this.deathTimer = 0;
   }
 
@@ -255,13 +271,22 @@ class Pacman extends Entity {
     // Normal teleport check
     if (this.collision.isTeleport(tileX, tileY)) {
       const exit = this.collision.getTeleportExit(tileX, tileY);
-      
+
       if (exit) {
         this.x = exit.x * this.tileSize + this.tileSize / 2;
         this.y = exit.y * this.tileSize + this.tileSize / 2;
         this.lastTeleportExit = exit;
       }
     }
+  }
+
+  private getCollidedGhost(): Ghost | null {
+    const ghosts = this.entityManager.getGhosts();
+    for (const g of ghosts) {
+      const distance = Math.sqrt((this.x - g.x) ** 2 + (this.y - g.y) ** 2);
+      if (distance < this.r + g.r) return g;
+    }
+    return null;
   }
 
   private handleCollisionWithEatable(x: number, y: number) {
@@ -295,29 +320,18 @@ class Pacman extends Entity {
 
   private tryEatPill(tileX: number, tileY: number) {
     const pill = this.entityManager.getPill();
-    if (
-      !this.isBuffed &&
-      pill.positions.some((pos) => pos.i === tileY && pos.j === tileX)
-    ) {
+    const pillIndex = pill.positions.findIndex(
+      (pos) => pos.i === tileY && pos.j === tileX,
+    );
+
+    if (pillIndex !== -1) {
       pill.eat(tileY, tileX);
       this.gameState.updateScore("POWER_PELLET");
-      this.isBuffed = true;
-      this.buffRemaining = this.buffDuration;
-    }
-  }
-
-  public updateBuff(dt: number) {
-    if (this.buffRemaining > 0) {
-      this.buffRemaining -= dt;
-      if (this.buffRemaining <= 0) {
-        this.isBuffed = false;
-        this.buffRemaining = 0;
-      }
     }
   }
 
   public draw(animate: boolean, dt: number): void {
-    if (this.isDying) {
+    if (this.state === "DYING") {
       this.drawDead(dt);
     } else {
       this.drawNormal(animate);
@@ -362,7 +376,7 @@ class Pacman extends Entity {
     this.deathTimer += dt;
 
     if (this.deathTimer >= this.deathDuration) {
-      this.isDying = false;
+      this.state = "ALIVE";
       this.deathTimer = 0;
       this.gameState.completeDeathSequence();
       return;
