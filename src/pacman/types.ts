@@ -28,7 +28,11 @@ export type LevelConfigType = {
   map: TileType[][];
   mapColor: string;
   buffDuration: number;
+  buffThreshold: number;
 };
 
 export type EventHandler = (payload?: any) => void;
-export type GameEvent = 'POWER_Pill_EATEN' | 'POWER_Pill_EXPIRED' | 'PACMAN_DEATH';
+export type GameEvent =
+  | "POWER_Pill_EATEN"
+  | "POWER_Pill_EXPIRED"
+  | "PACMAN_DEATH";

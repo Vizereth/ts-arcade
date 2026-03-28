@@ -5,7 +5,8 @@ const LEVEL_CONFIGS: Record<number, LevelConfigType> = {
   1: {
     map: MAP_LVL_1,
     mapColor: "#120a8f",
-    buffDuration: 6000
+    buffDuration: 10000,
+    buffThreshold: 3,
   },
 };
 
