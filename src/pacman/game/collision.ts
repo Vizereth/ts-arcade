@@ -36,10 +36,17 @@ class Collision {
     };
   }
 
-  public isWall(x: number, y: number): boolean {
+  // UPDATED: Added isExiting optional parameter
+  public isWall(x: number, y: number, isExiting: boolean = false): boolean {
     if (!this.gameState.levelData.map[y]) return true;
 
     const tile = this.gameState.levelData.map[y][x];
+
+    // If the tile is GL and the ghost is currently in "exiting" mode,
+    // we do not treat it as a wall.
+    if (tile === "GL" && isExiting) {
+      return false;
+    }
 
     const wallTiles = new Set(["WH", "WV", "TL", "TR", "BL", "BR", "GL"]);
 
@@ -57,7 +64,7 @@ class Collision {
       for (let x = 0; x < map[y].length; x++) {
         const tile = map[y][x];
         if (tile.startsWith("0")) {
-          const id = tile.slice(1); 
+          const id = tile.slice(1);
           if (!groups[id]) groups[id] = [];
           groups[id].push({ x, y });
         }
