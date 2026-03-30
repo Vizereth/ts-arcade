@@ -34,7 +34,7 @@ class EntityManager {
     this.dynamicEntities = {
       pacman: [new Pacman()],
       ghosts: Object.values(GHOSTS_CONFIG).map(
-        ({ name, color }) => new Ghost(name, color)
+        ({ name, color }) => new Ghost(name, color),
       ),
       pill: [new Pill()],
     };
@@ -77,14 +77,38 @@ class EntityManager {
   }
 
   public resetAllForLevel(): void {
-    [...this.getAllStatic(), ...this.getAllDynamic()].forEach((e) => e.resetForLevel());
+    [...this.getAllStatic(), ...this.getAllDynamic()].forEach((e) =>
+      e.resetForLevel(),
+    );
   }
 
-  public spawnPacman(): void {
+  // 1. Call this in GameState's loadLevel()
+  // This ensures the screen isn't empty on the title screen!
+  public spawnObjects(): void {
+    const food = this.getFood();
+    const pill = this.getPill();
+
+    // If your Food/Pill classes have separate spawn or setup methods,
+    // call them here! Otherwise, making sure they exist in the array is enough.
+    if (food && typeof food.spawn === "function") food.spawn();
+    if (pill && typeof pill.spawn === "function") pill.spawn();
+  }
+
+  public exitLairAll(): void {
+    this.getGhosts().forEach((ghost: Ghost) => {
+      ghost.calculateExitPath();
+    });
+  }
+
+  // 2. Call this in GameState's startGame() on Enter.
+  // This drops the characters in and cleans up the map array!
+  public spawnEntities(): void {
     this.getPacman().spawn();
+    this.getGhosts().forEach((g: Ghost) => g.spawn());
   }
 
-  public spawnAll(): void {
+  // 3. Keep this for when Pacman dies and you just need to reset positions
+  public resetPositionsForLevel(): void {
     this.getPacman().spawn();
     this.getGhosts().forEach((g: Ghost) => g.spawn());
   }
