@@ -1,17 +1,20 @@
 import { LEVEL_CONFIGS } from "../config/levels.js";
 import { SCORE_CONFIG } from "../config/scoring.js";
 import { EntityManager } from "../entities/entityManager.js";
-import type { GameMode, LevelConfigType } from "../types.js";
 import { Collision } from "./collision.js";
 import { eventBus } from "./eventBus.js";
 import { GameLoop } from "./loop.js";
 import { Timer } from "./timer.js";
+
+import type { GameMode, GraphType, LevelConfigType } from "../types.js";
+import { createPathGraph } from "../utils.js";
 
 class GameState {
   private static instance: GameState;
   private entityManager: EntityManager;
   private gameLoop: GameLoop;
 
+  public pathGraph: GraphType | null;
   private buffTimer: Timer = new Timer();
   private buffDuration = LEVEL_CONFIGS[1].buffDuration;
   private buffThreshold = LEVEL_CONFIGS[1].buffThreshold;
@@ -26,6 +29,7 @@ class GameState {
   private constructor() {
     this.entityManager = EntityManager.getInstance();
     this.gameLoop = GameLoop.getInstance();
+    this.pathGraph = null;
     this.lives = 3;
     this.currentLevel = 1;
     this.levelData = LEVEL_CONFIGS[1];
@@ -56,6 +60,9 @@ class GameState {
     this.levelData = this.getLevelConfig(this.currentLevel);
     this.entityManager.resetAll();
     this.entityManager.initAll();
+    this.buffDuration = LEVEL_CONFIGS[this.currentLevel].buffDuration;
+    this.buffThreshold = LEVEL_CONFIGS[this.currentLevel].buffThreshold;
+    this.pathGraph = createPathGraph(this.levelData.map);
 
     collision.initTeleports(this.levelData.map);
   }
