@@ -16,6 +16,8 @@ class Ghost extends Entity {
   private direction: { dx: number; dy: number };
   private path: string[] = [];
   private currentPathTarget: { x: number; y: number } | null = null;
+  private spawnGridX: number = 0;
+  private spawnGridY: number = 0;
   public name: string;
   public defaultColor: string;
   public color: string;
@@ -275,41 +277,40 @@ class Ghost extends Entity {
   // -------------------------
   // 5. Spawning
   // -------------------------
-  public spawn() {
+public spawn() {
     const map = this.gameState.levelData.map;
-    let spawnY = 0;
-    let spawnX = 0;
-
     for (let y = 0; y < map.length; y++) {
       let x = map[y].findIndex((tile) => tile === this.name);
       if (x !== -1) {
-        spawnY = y;
-        spawnX = x;
+        this.spawnGridX = x; // 👈 Save grid X
+        this.spawnGridY = y; // 👈 Save grid Y
+
         this.x = x * this.tileSize + this.tileSize / 2;
         this.y = y * this.tileSize + this.tileSize / 2;
 
-        // --- ADD THIS FIX ---
-        // Wipe the ghost initial from the map grid so it's just empty space!
         map[y][x] = "ES";
-        // --------------------
         break;
       }
     }
+  }
+public calculateExitPath() {
+    const map = this.gameState.levelData.map;
+    
+    // 2. Use those preserved grid coordinates! No pixel math rounding errors.
+    const startNode = `${this.spawnGridY},${this.spawnGridX}`;
 
-    // BIND THE PATHFINDER HERE
-    // Target row 11, col 13 (just above the ghost house exit)
-    const targetNode = findLairExit(this.gameState.levelData.map);
-    const startNode = `${spawnY},${spawnX}`;
-
-    // Fetch the parsed graph from your GameState
+    const targetNode = findLairExit(map);
     const graph = this.gameState.pathGraph;
 
     if (graph) {
       const foundPath = findShortestPath(graph, startNode, targetNode);
-      console.log("Found path: ", foundPath);
+      console.log(`${this.name} found path: `, foundPath);
+      
       if (foundPath) {
         this.path = foundPath;
       }
+    } else {
+      console.error(`Graph not found in GameState when ${this.name} tried to calculate path!`);
     }
   }
 
