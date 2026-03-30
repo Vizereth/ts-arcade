@@ -371,12 +371,53 @@ public calculateExitPath() {
     this.ctx.arc(centerX, centerY, s / 2, Math.PI, 0, false);
   }
 
-  private drawStaticBottom(left: number, top: number, s: number): void {
+private drawStaticBottom(left: number, top: number, s: number): void {
+    const ctx = this.ctx;
     const bottomBaseY = top + s;
+    const waveCount = 6;
+    const segmentWidth = s / waveCount;
+    const waveAmplitude = 2.5;
 
-    // Simple straight bottom for static version
-    this.ctx.lineTo(left + s, bottomBaseY);
-    this.ctx.lineTo(left, bottomBaseY);
+    // --- KEY FIX ---
+    // Instead of getting the current time, we freeze time at '0'.
+    // This locks the animation phase, making the waves stationary.
+    const now = 0; // Frozen time!
+    const animationPhase = ((now % 1000) / 1000) * Math.PI * 2;
+
+    // The rest of this is a direct copy from animateWavyBottom:
+    let currentX = left + s;
+    let currentY = bottomBaseY + Math.sin(animationPhase * 4) * waveAmplitude;
+
+    ctx.lineTo(currentX, currentY);
+
+    for (let i = waveCount - 1; i >= 0; i--) {
+      const segmentStartX = left + (i + 1) * segmentWidth;
+      const segmentEndX = left + i * segmentWidth;
+      const segmentThirdX = segmentStartX - segmentWidth / 3;
+      const segmentTwoThirdsX = segmentStartX - (2 * segmentWidth) / 3;
+
+      const startPhase =
+        ((i + 1) / waveCount) * Math.PI * 4 + animationPhase * 4;
+      const thirdPhase =
+        ((i + 2 / 3) / waveCount) * Math.PI * 4 + animationPhase * 4;
+      const twoThirdsPhase =
+        ((i + 1 / 3) / waveCount) * Math.PI * 4 + animationPhase * 4;
+      const endPhase = (i / waveCount) * Math.PI * 4 + animationPhase * 4;
+
+      const startY = bottomBaseY + Math.sin(startPhase) * waveAmplitude;
+      const thirdY = bottomBaseY + Math.sin(thirdPhase) * waveAmplitude;
+      const twoThirdsY = bottomBaseY + Math.sin(twoThirdsPhase) * waveAmplitude;
+      const endY = bottomBaseY + Math.sin(endPhase) * waveAmplitude;
+
+      ctx.bezierCurveTo(
+        segmentThirdX,
+        thirdY, 
+        segmentTwoThirdsX,
+        twoThirdsY, 
+        segmentEndX,
+        endY, 
+      );
+    }
   }
 
   private animateWavyBottom(left: number, top: number, s: number): void {
