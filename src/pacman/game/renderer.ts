@@ -21,21 +21,28 @@ class Renderer {
     );
     const canUpdate = gameState.mode === "PLAYING";
 
-    // Draw all dynamic entities
-    this.entityManager.getAllDynamic().forEach((entity) => {
-      if (!clearedCanvases.has(entity.canvas)) {
-        entity.clearCanvas();
-        clearedCanvases.add(entity.canvas);
-      }
+    // --- FIX: PREVENT RENDERING UNSPAWNED ENTITIES ---
+    // Moving characters (Pacman and Ghosts) have not called spawn() yet 
+    // when mode === "INIT". This stops them from appearing at (0, 0).
+    const shouldDrawDynamic = gameState.mode !== "INIT";
 
-      // Draw and optionally animate
-      entity.draw(canAnimate, dt);
+    // 1. Draw all dynamic entities (Only if game has started or is transitioning)
+    if (shouldDrawDynamic) {
+      this.entityManager.getAllDynamic().forEach((entity) => {
+        if (!clearedCanvases.has(entity.canvas)) {
+          entity.clearCanvas();
+          clearedCanvases.add(entity.canvas);
+        }
 
-      // Update only if the mode allows it
-      if (canUpdate) entity.update(dt);
-    });
+        // Draw and optionally animate
+        entity.draw(canAnimate, dt);
 
-    // Draw all static entities if they need redraw
+        // Update only if the mode allows it
+        if (canUpdate) entity.update(dt);
+      });
+    }
+
+    // 2. Draw all static entities if they need redraw (Walls, Food, UI)
     this.entityManager
       .getAllStatic()
       .filter((entity) => entity.needsRedraw)
