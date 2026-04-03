@@ -1,14 +1,20 @@
 import type { GraphType, TileType } from "./types.js";
-import { audio } from "./game/audio.js";
 import { AUDIO_CONFIG } from "./config/audioConfig.js";
+import { getAudio } from "./game/audioManager.js";
 
 async function initAudio() {
-  // Fire off all fetch requests at the exact same time!
-  await Promise.all(
-    AUDIO_CONFIG.map((sound) => audio.loadSound(sound.name, sound.url)),
-  );
+  const audio = getAudio();
 
-  console.log("All audio assets buffered and ready!");
+  try {
+    // 🌟 THE FIX: Fired off all fetch requests concurrently with the correct reference!
+    await Promise.all(
+      AUDIO_CONFIG.map((sound) => audio.loadSound(sound.name, sound.url)),
+    );
+
+    console.log("All audio assets buffered and ready!");
+  } catch (err) {
+    console.error("Failed to buffer audio assets:", err);
+  }
 }
 
 function setCanvasSize(
