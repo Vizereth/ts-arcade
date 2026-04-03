@@ -1,4 +1,15 @@
 import type { GraphType, TileType } from "./types.js";
+import { audio } from "./game/audio.js";
+import { AUDIO_CONFIG } from "./config/audioConfig.js";
+
+async function initAudio() {
+  // Fire off all fetch requests at the exact same time!
+  await Promise.all(
+    AUDIO_CONFIG.map((sound) => audio.loadSound(sound.name, sound.url)),
+  );
+
+  console.log("All audio assets buffered and ready!");
+}
 
 function setCanvasSize(
   canvas: HTMLCanvasElement,
@@ -232,6 +243,7 @@ function findLairInternalTiles(map: TileType[][]): string[] {
 }
 
 export {
+  initAudio,
   setCanvasSize,
   easeInOutCubic,
   findLairExit,
