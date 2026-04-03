@@ -26,6 +26,7 @@ class Ghost extends Entity {
   public r: number;
   private defaultSpeed: number;
   private speed: number;
+  private isReturningHome: boolean = false;
   private isFlashing: boolean;
   private flashSpeed: number = 200;
 
@@ -149,7 +150,19 @@ class Ghost extends Entity {
         // --- ADD THIS FIX ---
         // If that was the last tile in the path, kick-start the normal AI!
         if (this.path.length === 0) {
-          this.getRandomDirection();
+          if (this.isReturningHome) {
+            // 1. We reached the cage! Reset ghost properties
+            this.state = "CHASE";
+            this.speed = this.defaultSpeed;
+            this.color = this.defaultColor;
+            this.isReturningHome = false;
+
+            // 2. Immediately calculate a path to leave the lair again
+            this.calculateExitPath();
+          } else {
+            // Normal exit path completed, start standard movement
+            this.getRandomDirection();
+          }
         }
         // --------------------
       } else {
@@ -274,28 +287,50 @@ class Ghost extends Entity {
     }
   }
 
+  public beEaten() {
+    this.state = "EATEN";
+    this.speed = this.defaultSpeed * 2; // Eyes retreat quickly
+    this.isReturningHome = true;
+
+    const { tileX, tileY } = this.collision.getTile(this.x, this.y);
+    const startNode = `${tileY},${tileX}`;
+
+    // Target is the ghost's unique starting cage position
+    const targetNode = `${this.spawnGridY},${this.spawnGridX}`;
+    const graph = this.gameState.pathGraph;
+
+    if (graph) {
+      const foundPath = findShortestPath(graph, startNode, targetNode);
+      if (foundPath) {
+        this.path = foundPath;
+      }
+    }
+  }
+
   // -------------------------
   // 5. Spawning
   // -------------------------
-public spawn() {
+  public spawn() {
     const map = this.gameState.levelData.map;
     for (let y = 0; y < map.length; y++) {
       let x = map[y].findIndex((tile) => tile === this.name);
       if (x !== -1) {
-        this.spawnGridX = x; // 👈 Save grid X
-        this.spawnGridY = y; // 👈 Save grid Y
+        this.spawnGridX = x;
+        this.spawnGridY = y;
 
         this.x = x * this.tileSize + this.tileSize / 2;
         this.y = y * this.tileSize + this.tileSize / 2;
 
-        map[y][x] = "ES";
+        // 🔥 REMOVED: map[y][x] = "ES";
+        // We keep the map pure so that resets can read it again!
         break;
       }
     }
   }
-public calculateExitPath() {
+
+  public calculateExitPath() {
     const map = this.gameState.levelData.map;
-    
+
     // 2. Use those preserved grid coordinates! No pixel math rounding errors.
     const startNode = `${this.spawnGridY},${this.spawnGridX}`;
 
@@ -304,13 +339,15 @@ public calculateExitPath() {
 
     if (graph) {
       const foundPath = findShortestPath(graph, startNode, targetNode);
-      console.log(`${this.name} found path: `, foundPath);
-      
+
       if (foundPath) {
+        console.log(`${this.name} found path: `, foundPath);
         this.path = foundPath;
       }
     } else {
-      console.error(`Graph not found in GameState when ${this.name} tried to calculate path!`);
+      console.error(
+        `Graph not found in GameState when ${this.name} tried to calculate path!`,
+      );
     }
   }
 
@@ -337,12 +374,14 @@ public calculateExitPath() {
     if (this.state === "FRIGHTENED") {
       if (this.isFlashing) {
         const isWhite = Math.floor(Date.now() / this.flashSpeed) % 2 === 0;
-        currentColor = isWhite ? "#FFFFFF" : "#0000FF";
+        currentColor = "#FFFFFF";
       } else {
         currentColor = "#0000FF";
       }
-    } else if (this.state === "EATEN") {
-      ctx.globalAlpha = 0.5;
+    }
+    // New non-muddy color for EATEN state
+    else if (this.state === "EATEN") {
+      currentColor = "#A0E0FF"; // A clean, bright icy blue
     }
 
     ctx.fillStyle = currentColor;
@@ -357,7 +396,6 @@ public calculateExitPath() {
 
     ctx.closePath();
     ctx.fill();
-    ctx.globalAlpha = 1.0;
 
     const dir = this.getDirectionLabel();
     this.drawEyes(left, top, s, dir);
@@ -371,7 +409,7 @@ public calculateExitPath() {
     this.ctx.arc(centerX, centerY, s / 2, Math.PI, 0, false);
   }
 
-private drawStaticBottom(left: number, top: number, s: number): void {
+  private drawStaticBottom(left: number, top: number, s: number): void {
     const ctx = this.ctx;
     const bottomBaseY = top + s;
     const waveCount = 6;
@@ -411,11 +449,11 @@ private drawStaticBottom(left: number, top: number, s: number): void {
 
       ctx.bezierCurveTo(
         segmentThirdX,
-        thirdY, 
+        thirdY,
         segmentTwoThirdsX,
-        twoThirdsY, 
+        twoThirdsY,
         segmentEndX,
-        endY, 
+        endY,
       );
     }
   }
