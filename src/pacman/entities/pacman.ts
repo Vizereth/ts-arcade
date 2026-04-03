@@ -1,5 +1,4 @@
 import { CANVAS_CONFIG } from "../config/canvas.js";
-import { AudioManager } from "../game/audio.js";
 import { Collision } from "../game/collision.js";
 import { eventBus } from "../game/eventBus.js";
 import { GameState } from "../game/state.js";
@@ -30,7 +29,6 @@ class Pacman extends Entity {
   private mouthAngle: number = Math.PI / 4; // 45 degrees for classic wedge
 
   private deathTimer: number = 0; // 0 to 1
-  private deathDuration: number = 3000; // 1 second death animation
 
   private r: number;
   private color: string;
@@ -60,6 +58,7 @@ class Pacman extends Entity {
   }
 
   private initEventListeners() {
+    // Listen to the actual event emitted by GameState when the buff active timer ticks
     eventBus.on("POWER_PILL_EATEN", () => {
       this.isBuffed = true;
     });
@@ -90,19 +89,18 @@ class Pacman extends Entity {
     const collidedGhost = this.getCollidedGhost();
 
     if (collidedGhost) {
+      // Use Pacman's local truth!
       if (this.isBuffed && collidedGhost.state === "FRIGHTENED") {
-        // 1. Tell the system a ghost was eaten (for scoring)
-        this.gameState.updateScore("GHOST");
-
-        eventBus.emit("GHOST_EATEN", { ghostName: collidedGhost.name });
-      } else if (collidedGhost.state !== "EATEN") {
-        // Only die if the ghost isn't already "eyes" returning to base
+        eventBus.emit("COMMAND_GHOST_EATEN", { ghostName: collidedGhost.name });
+      } else if (
+        collidedGhost.state !== "FRIGHTENED" &&
+        collidedGhost.state !== "EATEN"
+      ) {
         this.triggerDeath();
         this.gameState.triggerDeathSequence();
       }
     }
   }
-
   public spawn() {
     const map = this.gameState.levelData.map;
 
@@ -119,11 +117,6 @@ class Pacman extends Entity {
   public triggerDeath(): void {
     this.state = "DYING";
     this.deathTimer = 0;
-
-    // 🔥 This circumvents circular references!
-    const audioManager = AudioManager.getInstance();
-    audioManager.stopMusic();
-    audioManager.playSFX("death");
   }
 
   private updateMovement(dt: number) {
@@ -259,21 +252,17 @@ class Pacman extends Entity {
   private checkAndTeleport() {
     const { tileX, tileY } = this.collision.getTile(this.x, this.y);
 
-    // If we just teleported, check if Pacman has moved off the exit tile
     if (this.lastTeleportExit) {
       if (
         tileX === this.lastTeleportExit.x &&
         tileY === this.lastTeleportExit.y
       ) {
-        // Still on exit tile, do nothing
         return;
       } else {
-        // Pacman has left exit tile
         this.lastTeleportExit = null;
       }
     }
 
-    // Normal teleport check
     if (this.collision.isTeleport(tileX, tileY)) {
       const exit = this.collision.getTeleportExit(tileX, tileY);
 
@@ -319,7 +308,9 @@ class Pacman extends Entity {
     const food = this.entityManager.getFood();
     if (food.positions.has(`${tileY},${tileX}`)) {
       food.eat(tileY, tileX);
-      this.gameState.updateScore("DOT");
+
+      // 🌟 THE FIX: Fired off to event bus instead of direct GameState calls
+      eventBus.emit("DOT_EATEN");
     }
   }
 
@@ -331,7 +322,13 @@ class Pacman extends Entity {
 
     if (pillIndex !== -1) {
       pill.eat(tileY, tileX);
-      this.gameState.updateScore("POWER_PELLET");
+
+      // Broadcast to the whole game that a power pill was eaten!
+      // (This is the event GameState listens to in order to fire back "POWER_PILL_EATEN")
+      eventBus.emit("POWER_PILL_EATEN");
+
+      // Keep this if the AudioController still relies on it for the gulp sound!
+      eventBus.emit("POWER_PILL_EATEN_BY_PACMAN");
     }
   }
 
@@ -380,8 +377,6 @@ class Pacman extends Entity {
   private drawDead(dt: number): void {
     this.deathTimer += dt;
 
-    // 🔥 THE FIX: Speed up the duration!
-    // Let's set it to 1.5 seconds (1500ms) instead of 3000ms.
     const customDeathDuration = 1500;
 
     if (this.deathTimer >= customDeathDuration) {
@@ -395,12 +390,10 @@ class Pacman extends Entity {
     const cy = this.y;
     const r = this.r;
 
-    // Use the new custom duration for our progress percentage
     const p = Math.min(1, this.deathTimer / customDeathDuration);
 
     this.ctx.save();
 
-    // 🌟 ADDITION: Screen shake right before he vanishes!
     if (p > 0.7 && p < 0.9) {
       const shakeX = (Math.random() - 0.5) * 4;
       const shakeY = (Math.random() - 0.5) * 4;
@@ -424,7 +417,6 @@ class Pacman extends Entity {
     this.ctx.closePath();
     this.ctx.fill();
 
-    // The classic arcade "spark" pop
     if (p > 0.9) {
       this.ctx.fillStyle = "#FFFFFF";
       this.ctx.beginPath();

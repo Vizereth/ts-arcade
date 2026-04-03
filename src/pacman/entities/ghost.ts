@@ -80,11 +80,22 @@ class Ghost extends Entity {
       }
     });
 
-    eventBus.on("GHOST_EATEN", (data: { ghostName: string }) => {
-      if (this.name === data.ghostName && this.state === "FRIGHTENED") {
-        this.beEaten();
-      }
-    });
+    // 🌟 THE FIX: Listen to the COMMAND emitted by Pacman
+    eventBus.on(
+      "COMMAND_GHOST_EATEN",
+      (data: { ghostName: string } | undefined) => {
+        if (
+          data &&
+          this.name === data.ghostName &&
+          this.state === "FRIGHTENED"
+        ) {
+          this.beEaten();
+
+          // 🌟 Broadcast out to GameState and AudioController that the ghost is officially consumed
+          eventBus.emit("GHOST_EATEN", { ghostName: this.name });
+        }
+      },
+    );
   }
 
   public override reset() {
@@ -163,24 +174,22 @@ class Ghost extends Entity {
         this.currentPathTarget = null;
         this.path.shift(); // Remove handled tile
 
-        // --- ADD THIS FIX ---
-        // If that was the last tile in the path, kick-start the normal AI!
         if (this.path.length === 0) {
           if (this.isReturningHome) {
-            // 1. We reached the cage! Reset ghost properties
             this.state = "CHASE";
             this.speed = this.defaultSpeed;
             this.color = this.defaultColor;
             this.isReturningHome = false;
 
-            // 2. Immediately calculate a path to leave the lair again
+            // 🌟 4. GHOST RETURNS HOME: Drop the hardcoded audio swaps.
+            // Let the game shout that this ghost returned to base!
+            eventBus.emit("GHOST_RETURNED_HOME", { ghostName: this.name });
+
             this.calculateExitPath();
           } else {
-            // Normal exit path completed, start standard movement
             this.getRandomDirection();
           }
         }
-        // --------------------
       } else {
         this.x += (dx / distance) * this.speed;
         this.y += (dy / distance) * this.speed;
@@ -321,6 +330,10 @@ class Ghost extends Entity {
         this.path = foundPath;
       }
     }
+
+    // 🌟 3. IF GHOST EATEN: Removed audio calls here.
+    // Notice how this method does not need to broadcast "GHOST_EATEN"
+    // because that broadcast originally initiated this call from Pacman or GameState!
   }
 
   // -------------------------
