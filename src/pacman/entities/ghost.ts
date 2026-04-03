@@ -68,7 +68,6 @@ class Ghost extends Entity {
 
     eventBus.on("POWER_PILL_WARNING", () => {
       if (this.state === "FRIGHTENED") {
-        // Trigger white/blue flashing animation in your Render logic
         this.isFlashing = true;
       }
     });
@@ -77,6 +76,12 @@ class Ghost extends Entity {
       this.isFlashing = false;
       if (this.state === "FRIGHTENED") {
         this.state = "CHASE";
+      }
+    });
+
+    eventBus.on("GHOST_EATEN", (data: { ghostName: string }) => {
+      if (this.name === data.ghostName && this.state === "FRIGHTENED") {
+        this.beEaten();
       }
     });
   }
@@ -370,33 +375,39 @@ class Ghost extends Entity {
     const top = this.y - s / 2;
 
     let currentColor = this.defaultColor;
+    let shouldDrawBody = true; // Flag to toggle body rendering
 
     if (this.state === "FRIGHTENED") {
       if (this.isFlashing) {
+        // 1. FIXED: Now actually using the modulo to swap colors
         const isWhite = Math.floor(Date.now() / this.flashSpeed) % 2 === 0;
-        currentColor = "#FFFFFF";
+        currentColor = isWhite ? "#FFFFFF" : "#0000FF";
       } else {
         currentColor = "#0000FF";
       }
-    }
-    // New non-muddy color for EATEN state
-    else if (this.state === "EATEN") {
-      currentColor = "#A0E0FF"; // A clean, bright icy blue
-    }
-
-    ctx.fillStyle = currentColor;
-    ctx.beginPath();
-    this.drawBaseShape(left, top, s);
-
-    if (animate) {
-      this.animateWavyBottom(left, top, s);
-    } else {
-      this.drawStaticBottom(left, top, s);
+    } else if (this.state === "EATEN") {
+      // 2. FIXED: Hide the body entirely instead of painting it light cyan!
+      // This matches the true arcade experience where only the eyes retreat.
+      shouldDrawBody = false;
     }
 
-    ctx.closePath();
-    ctx.fill();
+    // Only draw the body shape if they are not in the EATEN state
+    if (shouldDrawBody) {
+      ctx.fillStyle = currentColor;
+      ctx.beginPath();
+      this.drawBaseShape(left, top, s);
 
+      if (animate) {
+        this.animateWavyBottom(left, top, s);
+      } else {
+        this.drawStaticBottom(left, top, s);
+      }
+
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Eyes always render, handling the "floating eyes" retreat perfectly
     const dir = this.getDirectionLabel();
     this.drawEyes(left, top, s, dir);
   }
