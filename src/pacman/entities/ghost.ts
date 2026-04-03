@@ -62,6 +62,7 @@ class Ghost extends Entity {
     eventBus.on("POWER_PILL_EATEN", () => {
       if (this.state !== "EATEN") {
         this.state = "FRIGHTENED";
+        this.isFlashing = false;
         this.reverseDirection();
       }
     });
