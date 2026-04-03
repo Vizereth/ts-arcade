@@ -1,4 +1,5 @@
 import { Renderer } from "./renderer.js";
+import { GameState } from "./state.js";
 
 class GameLoop {
   renderer: Renderer;
@@ -32,6 +33,18 @@ class GameLoop {
 
     if (this.delta > this.interval) {
       this.then = this.now - (this.delta % this.interval);
+
+      const gameState = GameState.getInstance();
+
+      // Stop moving things if we are paused or waiting!
+      // (We allow PACMAN_DEAD so his death animation can still render)
+      if (
+        gameState.mode === "PAUSED" ||
+        gameState.mode === "LEVEL_TRANSITION"
+      ) {
+        return;
+      }
+
       this.renderer.render(this.delta);
     }
   }
