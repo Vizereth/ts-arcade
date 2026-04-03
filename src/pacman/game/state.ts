@@ -50,7 +50,6 @@ class GameState {
     this.entityManager.createEntities();
     this.loadLevel();
     this.gameLoop.start();
-    // Removed entityManager.spawnAll() from here!
     this.mode = "INIT";
   }
 
@@ -58,9 +57,10 @@ class GameState {
     const collision = Collision.getInstance();
     this.levelData = this.getLevelConfig(this.currentLevel);
 
+    // 1. Hard reset on everything (clears grids, scores stay intact)
     this.entityManager.resetAll();
 
-    // --- DRAW THE MAZE & DOTS IMMEDIATELY ---
+    // 2. Draw the maze & dots immediately
     this.entityManager.spawnObjects();
 
     this.buffDuration = LEVEL_CONFIGS[this.currentLevel].buffDuration;
@@ -68,20 +68,39 @@ class GameState {
     collision.initTeleports(this.levelData.map);
   }
 
-  private resetLevel(): void {
-    this.entityManager.resetAllForLevel();
-  }
+  // 🔥 REMOVED: resetLevel() because it pointed to a non-existent method!
 
   public nextLevel() {
     this.currentLevel++;
     this.loadLevel();
+    
+    // 🔥 NEW: Apply the countdown transition to new level loaded!
+    const ui = this.entityManager.getUI();
     this.mode = "LEVEL_TRANSITION";
+
+    const timer = new Timer();
+    timer.start(
+      3,
+      1000,
+      (remaining) => ui.drawCounter(remaining),
+      () => {
+        ui.resetForLevel();
+        
+        // Spawn players and calculate their paths
+        this.entityManager.spawnEntities();
+        this.pathGraph = createPathGraph(this.levelData.map);
+        this.entityManager.exitLairAll();
+        this.entityManager.initAll();
+
+        this.mode = "PLAYING";
+      },
+    );
   }
 
   public startGame() {
     this.mode = "PLAYING";
 
-    // --- DROP THE CHARACTERS IN NOW ---
+    // Drop the characters in now
     this.entityManager.spawnEntities();
 
     // Now that the map is sanitized, generate the graph!
@@ -130,7 +149,10 @@ class GameState {
 
   public completeDeathSequence(): void {
     const ui = this.entityManager.getUI();
-    this.resetLevel();
+
+    // 3. Perfect! Points back to the working EntityManager method now.
+    this.entityManager.resetPositionsForDeath();
+
     this.mode = "LEVEL_TRANSITION";
 
     const timer = new Timer();
@@ -140,6 +162,10 @@ class GameState {
       (remaining) => ui.drawCounter(remaining),
       () => {
         ui.resetForLevel();
+
+        // 4. Countdown hit 0! Unleash the ghosts.
+        this.entityManager.exitLairAll();
+
         this.mode = "PLAYING";
       },
     );
