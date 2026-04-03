@@ -86,9 +86,14 @@ class GameState {
 
     // Now that the map is sanitized, generate the graph!
     this.pathGraph = createPathGraph(this.levelData.map);
-    this.entityManager.exitLairAll();
-    // Initialize triggers the calculateExitPath we added to the ghosts
-    this.entityManager.initAll();
+    if (this.pathGraph && Object.keys(this.pathGraph).length > 0) {
+      this.entityManager.exitLairAll();
+      this.entityManager.initAll();
+    } else {
+      console.error(
+        "Game cannot start: The path graph generated is completely empty.",
+      );
+    }
   }
 
   public stopGame(): void {
