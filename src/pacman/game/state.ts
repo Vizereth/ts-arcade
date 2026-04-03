@@ -8,6 +8,7 @@ import { Timer } from "./timer.js";
 
 import type { GameMode, GraphType, LevelConfigType } from "../types.js";
 import { createPathGraph } from "../utils.js";
+import { audio } from "./audio.js";
 
 class GameState {
   private static instance: GameState;
@@ -73,7 +74,7 @@ class GameState {
   public nextLevel() {
     this.currentLevel++;
     this.loadLevel();
-    
+
     // 🔥 NEW: Apply the countdown transition to new level loaded!
     const ui = this.entityManager.getUI();
     this.mode = "LEVEL_TRANSITION";
@@ -85,7 +86,7 @@ class GameState {
       (remaining) => ui.drawCounter(remaining),
       () => {
         ui.resetForLevel();
-        
+
         // Spawn players and calculate their paths
         this.entityManager.spawnEntities();
         this.pathGraph = createPathGraph(this.levelData.map);
@@ -98,21 +99,45 @@ class GameState {
   }
 
   public startGame() {
-    this.mode = "PLAYING";
+    this.mode = "LEVEL_TRANSITION";
 
-    // Drop the characters in now
+    // 1. Play game start audio (non-looping)
+    audio.playMusic("start", false);
+
     this.entityManager.spawnEntities();
-
-    // Now that the map is sanitized, generate the graph!
     this.pathGraph = createPathGraph(this.levelData.map);
-    if (this.pathGraph && Object.keys(this.pathGraph).length > 0) {
-      this.entityManager.exitLairAll();
-      this.entityManager.initAll();
-    } else {
-      console.error(
-        "Game cannot start: The path graph generated is completely empty.",
-      );
-    }
+
+    const ui = this.entityManager.getUI();
+
+    const timer = new Timer();
+    // 2. We trigger a 4-second sequence to bridge the 4.5s audio clip
+    timer.start(
+      4,
+      1000,
+      (remaining) => {
+        if (remaining > 1) {
+          // Display the numbers 3, 2 for the first ticks
+          ui.drawCounter(remaining - 1);
+        } else if (remaining === 1) {
+          // When we hit the last second of audio, flash READY!
+          ui.drawReady();
+        }
+      },
+      () => {
+        // Countdown completed! Clear everything out.
+        ui.clearReady();
+
+        if (this.pathGraph && Object.keys(this.pathGraph).length > 0) {
+          this.entityManager.exitLairAll();
+          this.entityManager.initAll();
+        }
+
+        // 3. Start background siren loop!
+        audio.playMusic("siren_0", true);
+
+        this.mode = "PLAYING";
+      },
+    );
   }
 
   public stopGame(): void {
