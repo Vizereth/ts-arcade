@@ -4,8 +4,22 @@ export type GameMode =
   | "PAUSED"
   | "PACMAN_DEAD"
   | "LEVEL_TRANSITION"
-  | "GHOST_EATEN"
+  | "GHOST_EATEN" // Classic freeze-frame when Pac-Man munches a ghost
   | "GAME_OVER";
+
+export type GameEvent =
+  // --- Power Pill Events ---
+  | "POWER_PILL_EATEN"
+  | "POWER_PILL_WARNING"
+  | "POWER_PILL_EXPIRED"
+
+  // --- Combat & Scoring Events ---
+  | "GHOST_EATEN" // Emitted by Pacman when he overlaps a blue ghost
+  | "GHOST_RETURNED_HOME" // Emitted by a Ghost when its eyes reach the center cage
+
+  // --- Lifecycle Events ---
+  | "GAME_START"
+  | "PACMAN_DEATH";
 
 export type TileType =
   | "WH" // Wall Horizontal
@@ -34,8 +48,3 @@ export type LevelConfigType = {
 
 export type GraphType = Record<string, string[]>;
 export type EventHandler = (payload?: any) => void;
-export type GameEvent =
-  | "POWER_PILL_EATEN"
-  | "POWER_PILL_WARNING"
-  | "POWER_PILL_EXPIRED"
-  | "PACMAN_DEATH";
