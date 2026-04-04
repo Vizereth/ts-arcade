@@ -8,6 +8,7 @@ import { Timer } from "./timer.js";
 
 import type { GameMode, GraphType, LevelConfigType } from "../types.js";
 import { createPathGraph } from "../utils.js";
+import { getAudio } from "./audioManager.js";
 
 class GameState {
   private static instance: GameState;
@@ -111,19 +112,26 @@ class GameState {
     );
   }
 
-  public startGame() {
+public startGame() {
     this.mode = "LEVEL_TRANSITION";
 
+    const audio = getAudio();
     eventBus.emit("GAME_START_SEQUENCE");
+
+    // 🌟 THE FIX: Get exact sound length! E.g., returns ~4.2 for classic intro
+    const trackDuration = audio.getTrackDuration("start");
+    
+    // Fallback to 4 if audio isn't loaded yet or duration returns 0
+    const countdownTime = trackDuration > 0 ? Math.ceil(trackDuration) : 4;
 
     this.entityManager.spawnEntities();
     this.pathGraph = createPathGraph(this.levelData.map);
 
     const ui = this.entityManager.getUI();
-
     const timer = new Timer();
+
     timer.start(
-      4,
+      countdownTime, // Dynamic duration!
       1000,
       (remaining) => {
         if (remaining > 1) {
@@ -141,7 +149,6 @@ class GameState {
         }
 
         eventBus.emit("GAME_START");
-
         this.mode = "PLAYING";
       },
     );
@@ -193,15 +200,20 @@ class GameState {
 
   public completeDeathSequence(): void {
     const ui = this.entityManager.getUI();
+    const audio = getAudio();
 
     this.entityManager.resetPositionsForDeath();
     this.mode = "LEVEL_TRANSITION";
 
-    eventBus.emit("GAME_START_SEQUENCE");
+    eventBus.emit("GAME_START_SEQUENCE"); // Fires the "start" track again
+
+    // 🌟 THE FIX: Grab the duration again for the reset countdown!
+    const trackDuration = audio.getTrackDuration("start");
+    const countdownTime = trackDuration > 0 ? Math.ceil(trackDuration) : 3;
 
     const timer = new Timer();
     timer.start(
-      3,
+      countdownTime, // Dynamic duration!
       1000,
       (remaining) => ui.drawCounter(remaining),
       () => {
@@ -209,7 +221,6 @@ class GameState {
         this.entityManager.exitLairAll();
 
         eventBus.emit("GAME_RESUMED");
-
         this.mode = "PLAYING";
       },
     );
