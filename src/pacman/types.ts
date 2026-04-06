@@ -5,7 +5,9 @@ export type GameMode =
   | "PACMAN_DEAD"
   | "LEVEL_TRANSITION"
   | "GHOST_EATEN" // Classic freeze-frame when Pac-Man munches a ghost
-  | "GAME_OVER";
+  | "GAME_OVER"
+  | "LEVEL_COMPLETE" // 🌟 Заморозка при съедании последней точки
+  | "INTERMISSION";
 
 export type GameEvent =
   // --- Power Pill Events ---
@@ -21,6 +23,8 @@ export type GameEvent =
   | "GAME_START"
   | "PACMAN_DEATH";
 
+export type TeleportType = `0${string}`; // Подходит для "0A", "0B", "0C", "01" и т.д.
+
 export type TileType =
   | "WH" // Wall Horizontal
   | "WV" // Wall Vertical
@@ -30,7 +34,7 @@ export type TileType =
   | "BR" // Bottom Right Corner
   | "FD" // Food
   | "PP" // Power Pill
-  | "0A" // Teleport Pair A
+  | TeleportType // 🌟 Используем динамический тип для телепортов
   | "ES" // Empty Space
   | "GL" // Ghost Lair
   | "PM" // Pac-Man
