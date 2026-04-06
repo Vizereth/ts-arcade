@@ -15,7 +15,7 @@ class Renderer {
   public render(dt?: number): void {
     const gameState = GameState.getInstance();
 
-    // 🌟 ОСТАВЛЯЕМ ЗАМОРОЗКУ ЭКРАНА: 
+    // 🌟 ОСТАВЛЯЕМ ЗАМОРОЗКУ ЭКРАНА:
     // Если Пакман съел привидение, мы просто не очищаем холст и не рисуем новые кадры.
     if (gameState.mode === "GHOST_EATEN") {
       return;
@@ -24,7 +24,16 @@ class Renderer {
     const clearedCanvases = new Set<HTMLCanvasElement>();
 
     // Решаем, нужно ли крутить анимации (ножки привидений, рот Пакмана)
-    const canAnimate = ["PLAYING", "INIT", "LEVEL_TRANSITION"].includes(gameState.mode);
+    const canAnimate = ["PLAYING", "INIT", "LEVEL_TRANSITION"].includes(
+      gameState.mode,
+    );
+
+    if (gameState.mode === "INTERMISSION") {
+      const ui = this.entityManager.getUI();
+      ui.draw(canAnimate);
+      return;
+    }
+
     const shouldDrawDynamic = gameState.mode !== "INIT";
 
     // 1. Отрисовка динамических объектов
