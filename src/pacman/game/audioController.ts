@@ -36,6 +36,7 @@ class AudioController {
 
     // 🏁 1. Game Intro
     eventBus.on("GAME_START_SEQUENCE" as GameEvent, () => {
+      currentMusic = null; // 🌟 Принудительно сбрасываем старый трек, так как "intermission" уже заглохла
       switchMusic("start", false);
     });
 
@@ -110,7 +111,7 @@ class AudioController {
     eventBus.on("DOT_EATEN" as GameEvent, () => {
       const ghosts = entityManager.getGhosts();
       const abnormalStateActive = ghosts.some(
-        (g) => g.state === "FRIGHTENED" || g.state === "EATEN"
+        (g) => g.state === "FRIGHTENED" || g.state === "EATEN",
       );
 
       if (abnormalStateActive) return;
@@ -123,6 +124,11 @@ class AudioController {
     // 💊 10. Power Pellet Eaten SFX
     eventBus.on("POWER_PILL_EATEN_BY_PACMAN" as GameEvent, () => {
       audio.playSFX("fruit");
+    });
+
+    // 🎭 Интермиссия
+    eventBus.on("INTERMISSION_START" as GameEvent, () => {
+      switchMusic("intermission", false);
     });
   }
 }
