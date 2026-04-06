@@ -1,12 +1,13 @@
 import { CANVAS_CONFIG } from "../config/canvas.js";
 import { Entity } from "../entities/entity.js";
+import { eventBus } from "../game/eventBus.js";
 import { GameState } from "../game/state.js";
 
 class Food extends Entity {
   private gameState: GameState;
   private color: string;
   private r: number;
-  
+
   // Explicitly typing this as a Set of strings to avoid TS errors with .clear() and .add()
   public positions: Set<string> = new Set<string>();
 
@@ -19,17 +20,24 @@ class Food extends Entity {
 
   // 1. Map scanning happens here so game can draw dots on loadLevel()
   public spawn() {
-    this.positions.clear(); 
+    this.positions.clear();
+
+    // 🌟 Очищаем холст от старых точек ПЕРЕД генерацией новых
+    this.clearCanvas();
+
     const map = this.gameState.levelData.map;
-    
+    let dotCount = 0;
+
     for (let i = 0; i < map.length; i++) {
       for (let j = 0; j < map[i].length; j++) {
         if (map[i][j] === "FD") {
           this.positions.add(`${i},${j}`);
+          dotCount++;
         }
       }
     }
     this.needsRedraw = true;
+    this.gameState.setTotalDots(dotCount);
   }
 
   // 2. Kept empty to prevent duplicate map scans during initAll()
@@ -47,8 +55,10 @@ class Food extends Entity {
       j * this.tileSize,
       i * this.tileSize,
       this.tileSize,
-      this.tileSize
+      this.tileSize,
     );
+    // 🌟 Сообщаем шине событий, что точка съедена
+    eventBus.emit("DOT_EATEN");
   }
 
   public update() {
@@ -72,7 +82,7 @@ class Food extends Entity {
       tileSize * i + tileSize / 2,
       this.r,
       0,
-      Math.PI * 2
+      Math.PI * 2,
     );
     this.ctx.fill();
     this.ctx.closePath();
