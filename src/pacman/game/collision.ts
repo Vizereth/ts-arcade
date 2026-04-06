@@ -1,11 +1,16 @@
 import { CANVAS_CONFIG } from "../config/canvas.js";
-import type { TileType } from "../types.js";
+import type { TileType, TeleportType } from "../types.js"; 
 import { GameState } from "./state.js";
+
+interface Coords {
+  x: number;
+  y: number;
+}
 
 class Collision {
   private static instance: Collision;
   private gameState: GameState;
-  private teleportPairs: Record<string, { x: number; y: number }> = {};
+  private teleportPairs: Record<string, Coords> = {};
   private tileSize: number;
 
   constructor() {
@@ -18,6 +23,11 @@ class Collision {
       Collision.instance = new Collision();
     }
     return Collision.instance;
+  }
+
+  // 🌟 TYPE GUARD: Теперь TypeScript на 100% уверен в типе телепорта
+  private isTeleportTile(tile: TileType): tile is TeleportType {
+    return typeof tile === "string" && tile.startsWith("0");
   }
 
   public getTile(x: number, y: number) {
@@ -36,7 +46,6 @@ class Collision {
     };
   }
 
-  // UPDATED: Added isExiting optional parameter
   public isWall(
     x: number,
     y: number,
@@ -47,8 +56,6 @@ class Collision {
 
     const tile = this.gameState.levelData.map[y][x];
 
-    // If the tile is GL and the ghost is currently in "exiting" mode,
-    // we do not treat it as a wall.
     if (tile === "GL" && (isExiting || isEntering)) {
       return false;
     }
@@ -63,13 +70,16 @@ class Collision {
   }
 
   public initTeleports(map: TileType[][]): void {
-    const groups: Record<string, { x: number; y: number }[]> = {};
+    this.teleportPairs = {}; 
+    const groups: Record<string, Coords[]> = {};
 
     for (let y = 0; y < map.length; y++) {
       for (let x = 0; x < map[y].length; x++) {
         const tile = map[y][x];
-        if (tile.startsWith("0")) {
-          const id = tile.slice(1);
+        
+        // 🌟 Используем наш Type Guard
+        if (this.isTeleportTile(tile)) {
+          const id = tile.slice(1); // Теперь TS знает, что slice безопасен
           if (!groups[id]) groups[id] = [];
           groups[id].push({ x, y });
         }
@@ -81,15 +91,17 @@ class Collision {
       if (a && b) {
         this.teleportPairs[`${a.x},${a.y}`] = b;
         this.teleportPairs[`${b.x},${b.y}`] = a;
+      } else {
+        console.warn(`Portal with ID "0${id}" has no pair on map!`);
       }
     }
   }
 
-  public getTeleportExit(x: number, y: number) {
+  public getTeleportExit(x: number, y: number): Coords | null {
     return this.teleportPairs[`${x},${y}`] || null;
   }
 
-  public isTeleport(x: number, y: number) {
+  public isTeleport(x: number, y: number): boolean {
     return !!this.teleportPairs[`${x},${y}`];
   }
 }
