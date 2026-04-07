@@ -17,7 +17,9 @@ abstract class Entity {
     this.isDynamic = isDynamic;
     this.needsRedraw = true;
 
-    const canvas = document.getElementById(this.layer) as HTMLCanvasElement | null;
+    const canvas = document.getElementById(
+      this.layer,
+    ) as HTMLCanvasElement | null;
     if (!canvas) throw new Error(`Canvas ${this.layer} not found.`);
     this.canvas = canvas;
 
@@ -32,23 +34,21 @@ abstract class Entity {
   // 🌟 НОВЫЙ МЕТОД: подстраивает холст под текущую карту
   public resizeCanvas() {
     const gameState = GameState.getInstance();
-    
-    // Если игра только запустилась и стейт ещё пустой — страхуемся картой 1
+
     const currentMap = gameState.levelData?.map || LEVEL_1_MAP;
 
     setCanvasSize(
       this.canvas,
       CANVAS_CONFIG.tile.size,
-      CANVAS_CONFIG.tile.extraHeightFactor,
-      currentMap // 🌟 Динамическая карта вместо хардкода!
+      0, // 🌟 Forced the extra factor to 0 so no excess canvas is added!
+      currentMap,
     );
   }
-
   clearCanvas(
     x: number = 0,
     y: number = 0,
     width: number = this.canvas.width,
-    height: number = this.canvas.height
+    height: number = this.canvas.height,
   ) {
     this.ctx.clearRect(x, y, width, height);
   }
@@ -61,7 +61,7 @@ abstract class Entity {
 
   init(): void {}
   reset(): void {}
-  
+
   // 🌟 Метод очистки и подготовки для нового уровня
   resetForLevel(): void {
     this.clearCanvas();
