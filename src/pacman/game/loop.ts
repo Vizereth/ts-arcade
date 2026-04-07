@@ -4,7 +4,7 @@ import { EntityManager } from "../entities/entityManager.js";
 
 class GameLoop {
   renderer: Renderer;
-  private entityManager = EntityManager.getInstance(); // 🌟 ДОБАВИЛИ
+  private entityManager = EntityManager.getInstance();
   private static instance: GameLoop;
   private fps: number;
   private now: number | null = null;
@@ -27,7 +27,6 @@ class GameLoop {
     return GameLoop.instance;
   }
 
-  // В методе loop() класса GameLoop
   public loop() {
     this.timer = requestAnimationFrame(() => this.loop());
 
@@ -36,30 +35,22 @@ class GameLoop {
 
     if (this.delta > this.interval) {
       this.then = this.now - (this.delta % this.interval);
-
       const gameState = GameState.getInstance();
 
-      // 🌟 ФАЗА UPDATE 🌟
+      // 🌟 UPDATE PHASE
       if (gameState.mode === "PLAYING") {
         this.entityManager
           .getAllDynamic()
-          .forEach((entity) => entity.update(this.delta!));
-        this.entityManager
-          .getAllStatic()
-          .forEach((entity) => entity.update(this.delta!));
-      } else if (gameState.mode === "INTERMISSION") {
-        // Здесь мы обновляем только координаты персонажей в мультфильме!
-        const ui = this.entityManager.getUI();
-        const intermission = ui.getIntermission();
-        if (intermission) {
-          intermission.update(this.delta!);
-        }
+          .forEach((e) => e.update(this.delta!));
+        this.entityManager.getAllStatic().forEach((e) => e.update(this.delta!));
       }
 
-      // 🌟 ФАЗА RENDER 🌟
+      // 🌟 RENDER PHASE
+      // Strictly block rendering if Game Over or Intermission
       if (
         gameState.mode !== "PAUSED" &&
-        gameState.mode !== "LEVEL_TRANSITION"
+        gameState.mode !== "INTERMISSION" &&
+        gameState.mode !== "GAME_OVER"
       ) {
         this.renderer.render(this.delta!);
       }
